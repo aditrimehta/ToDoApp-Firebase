@@ -48,9 +48,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TodoApp() {
     val database = remember {
-        FirebaseDatabase.getInstance(
-            "https://todoappmadproj-default-rtdb.asia-southeast1.firebasedatabase.app/"
-        ).reference.child("tasks")
+        val url = BuildConfig.FIREBASE_DB_URL
+        if (url.isNotBlank()) {
+            FirebaseDatabase.getInstance(url).reference.child("tasks")
+        } else {
+            FirebaseDatabase.getInstance().reference.child("tasks")
+        }
     }
 
     var tasks by remember { mutableStateOf(listOf<Pair<String, Task>>()) }
@@ -278,19 +281,16 @@ fun TodoApp() {
             items(tasks, key = { it.first }) { item ->
                 val (id, task) = item
 
-                val dismissState = rememberSwipeToDismissBoxState(
-                    confirmValueChange = { value ->
-                        if (value == SwipeToDismissBoxValue.EndToStart) {
-                            database.child(id).removeValue()
-                                .addOnFailureListener {
-                                    message = "Delete failed: ${it.message}"
-                                }
-                            true
-                        } else {
-                            false
-                        }
+                val dismissState = rememberSwipeToDismissBoxState()
+
+                LaunchedEffect(dismissState.currentValue) {
+                    if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+                        database.child(id).removeValue()
+                            .addOnFailureListener {
+                                message = "Delete failed: ${it.message}"
+                            }
                     }
-                )
+                }
 
                 SwipeToDismissBox(
                     state = dismissState,
